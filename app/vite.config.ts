@@ -1,9 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+// @ts-expect-error — plain JS plugin, no types needed
+import { oracleApiPlugin } from './server/api-plugin.mjs'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), oracleApiPlugin()],
   server: {
     // Bento's API does not send CORS headers for browser origins, so in dev we
     // proxy /bento through Vite and talk to it same-origin.

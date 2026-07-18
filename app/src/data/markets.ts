@@ -10,6 +10,12 @@ export type Market = {
   poolBelieve: number;
   category: string;
   verifiedVia: string;
+  /** GitHub/Strava account the oracle checks, when the verifier needs one. */
+  oracleHandle?: string;
+  /** Numeric goal the oracle measures against, e.g. 5 commits. */
+  target?: number;
+  /** Unix seconds — when the oracle runs. */
+  endTime?: number;
 };
 
 /** Placeholder deck until we wire up live Bento markets. */

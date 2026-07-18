@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Clock, Flame, Inbox, RefreshCw, ThumbsDown } from 'lucide-react';
+import { Clock, Flame, Inbox, RefreshCw, ThumbsDown, Trophy } from 'lucide-react';
 import { useMarkets } from '../../store/markets';
 import { Spinner } from '../Spinner';
+import { MarketDetail } from './MarketDetail';
+import type { Market } from '../../data/markets';
 
 /** "04:12:33 left", or a resolved state once the deadline passes. */
 function timeLeft(endTimeSec: number | undefined, now: number) {
@@ -29,8 +31,9 @@ function formatHandle(handle?: string) {
 }
 
 export function MyBets({ onGoSwipe }: { onGoSwipe: () => void }) {
-  const { positions, account, balance, bets, refresh, source, loading, votes, marketById } =
+  const { positions, account, balance, bets, refresh, source, loading, votes, marketById, verdicts } =
     useMarkets();
+  const [openMarket, setOpenMarket] = useState<Market | null>(null);
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -73,6 +76,7 @@ export function MyBets({ onGoSwipe }: { onGoSwipe: () => void }) {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 sm:space-y-8">
+      {openMarket && <MarketDetail market={openMarket} onClose={() => setOpenMarket(null)} />}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         <div className="bg-neo-yellow neo-border p-5 shadow-neo sm:p-6">
           <div className="text-4xl font-black leading-none sm:text-5xl">{account?.totalBets ?? positions.length}</div>
@@ -118,10 +122,19 @@ export function MyBets({ onGoSwipe }: { onGoSwipe: () => void }) {
           const market = marketById(p.duelId);
           const startedBy = formatHandle(market?.handle);
 
+          const verdict = verdicts[p.duelId];
+          const settled = verdict?.status === 'judged';
+          const mySide = isHate ? 'haters' : 'believers';
+          const iWon = settled && verdict.winningSide === mySide;
+
           return (
             <div
               key={`${p.duelId}-${p.optionLabel}`}
-              className="flex flex-col gap-4 bg-white neo-border p-4 shadow-neo transition-transform hover:-translate-y-1 md:flex-row md:items-center sm:p-5"
+              onClick={() => {
+                const m = marketById(p.duelId);
+                if (m) setOpenMarket(m);
+              }}
+              className="flex cursor-pointer flex-col gap-4 bg-white neo-border p-4 shadow-neo transition-transform hover:-translate-y-1 md:flex-row md:items-center sm:p-5"
             >
               <div className="min-w-0 flex-1 space-y-3">
                 <div className="space-y-2">
@@ -135,6 +148,15 @@ export function MyBets({ onGoSwipe }: { onGoSwipe: () => void }) {
                       <Clock size={11} /> {clock.label}
                     </span>
                     <span>Started by: {startedBy}</span>
+                    {settled && (
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-1 ${
+                          iWon ? 'bg-neo-green' : 'bg-neo-red'
+                        }`}
+                      >
+                        <Trophy size={11} /> {iWon ? 'You won — see payout' : 'You lost'}
+                      </span>
+                    )}
                   </div>
                 </div>
 

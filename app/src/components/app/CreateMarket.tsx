@@ -18,6 +18,18 @@ const PROMPTS = [
   'Read 20 pages tonight',
 ];
 
+function formatDuration(hours: number) {
+  const seconds = Math.round(hours * 3600);
+  if (seconds < 60) return `${seconds} sec`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)} min`;
+  const whole = Math.floor(hours);
+  const mins = Math.round((hours - whole) * 60);
+  return mins ? `${whole}h ${mins}m` : `${whole} hr${whole === 1 ? '' : 's'}`;
+}
+
+/** Quick picks, including sub-minute windows for demoing the oracle. */
+const DURATION_PRESETS = [10 / 3600, 60 / 3600, 5 / 60, 0.5, 1, 2, 8];
+
 /** Verifiers that need an account handle for the oracle to scrape. */
 const NEEDS_ACCOUNT: Record<string, { label: string; placeholder: string }> = {
   GitHub: { label: 'GitHub username', placeholder: 'torvalds' },
@@ -31,7 +43,8 @@ export function CreateMarket({ onCreated }: { onCreated: () => void }) {
   // Default to whoever is currently swiping so the trap is attributed correctly.
   const [handle, setHandle] = useState(activeAccount?.name ?? '');
   const [oracleHandle, setOracleHandle] = useState('');
-  const [hours, setHours] = useState(8);
+  const [target, setTarget] = useState(5);
+  const [hours, setHours] = useState(2);
   const [categoryIdx, setCategoryIdx] = useState(0);
   const [verifier, setVerifier] = useState(CATEGORIES[0].verifiers[0]);
 
@@ -57,6 +70,7 @@ export function CreateMarket({ onCreated }: { onCreated: () => void }) {
         category: category.label,
         verifiedVia: verifier,
         oracleHandle: oracleHandle.trim() || undefined,
+        target: account ? target : undefined,
       });
       setGoal('');
       setOracleHandle('');
@@ -183,27 +197,61 @@ export function CreateMarket({ onCreated }: { onCreated: () => void }) {
               placeholder={account.placeholder}
               className="w-full bg-white neo-border p-4 font-bold text-lg focus:outline-none transition-colors"
             />
+
+            <label htmlFor="target" className="font-black text-sm uppercase block pt-2">
+              How many {verifier === 'GitHub' ? 'commits' : 'activities'}?
+            </label>
+            <input
+              id="target"
+              type="number"
+              min={1}
+              max={50}
+              value={target}
+              onChange={(e) => setTarget(Number(e.target.value))}
+              className="w-32 bg-white neo-border p-3 font-black text-lg focus:outline-none"
+            />
           </div>
         )}
 
-        {/* Deadline */}
+        {/* Deadline — half-hour granularity */}
         <div className="space-y-2">
           <label htmlFor="hours" className="font-black text-lg uppercase block">
-            Deadline: <span className="text-neo-red">{hours} hours</span> from now
+            Deadline: <span className="text-neo-red">{formatDuration(hours)}</span> from now
           </label>
           <input
             id="hours"
             type="range"
-            min={1}
+            min={10 / 3600}
             max={24}
+            step={0.5}
             value={hours}
             onChange={(e) => setHours(Number(e.target.value))}
             className="w-full accent-neo-red"
           />
           <div className="flex justify-between font-bold text-xs text-gray-400 uppercase">
-            <span>1 hr — brave</span>
+            <span>10 sec — reckless</span>
             <span>24 hrs — coward</span>
           </div>
+          <div className="flex gap-2 flex-wrap pt-1">
+            {DURATION_PRESETS.map((h) => (
+              <button
+                key={h}
+                type="button"
+                onClick={() => setHours(h)}
+                className={`neo-border px-3 py-1 text-xs font-black uppercase cursor-pointer transition-all ${
+                  hours === h ? 'bg-neo-yellow shadow-neo-sm' : 'bg-white hover:bg-neo-bg'
+                }`}
+              >
+                {formatDuration(h)}
+              </button>
+            ))}
+          </div>
+          {hours < 5 / 60 && (
+            <p className="font-bold text-xs text-neo-red">
+              Demo window. Bento still won't open the market for ~31 min, so use "Run oracle now"
+              on the trap's detail view to judge it immediately.
+            </p>
+          )}
         </div>
 
         {error && (

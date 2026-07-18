@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -27,6 +28,7 @@ import {
   type VoteBreakdown,
 } from '../lib/bento';
 import { loadAccounts, type DemoAccount } from '../data/accounts';
+import { fetchVerdicts, resolveMarket, type Verdict } from '../lib/oracle';
 
 export type Vote = 'hate' | 'believe';
 
@@ -47,6 +49,7 @@ export type NewMarketInput = {
   category: string;
   verifiedVia: string;
   oracleHandle?: string;
+  target?: number;
 };
 
 /** Where the deck's data is coming from, surfaced in the UI so nothing is faked. */
@@ -71,6 +74,9 @@ type MarketsValue = {
   votes: Record<string, VoteBreakdown>;
   /** True on first load and while switching accounts. */
   loading: boolean;
+  /** Oracle verdicts keyed by duelId — present once a market is settled. */
+  verdicts: Record<string, Verdict>;
+  refreshVerdicts: () => Promise<void>;
   /** Real Bento testnet accounts available to swipe as. */
   accounts: DemoAccount[];
   activeAccount: DemoAccount | null;
@@ -89,6 +95,9 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
   const [positions, setPositions] = useState<Position[]>([]);
   const [votes, setVotes] = useState<Record<string, VoteBreakdown>>({});
   const [loading, setLoading] = useState(true);
+  const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({});
+  /** Markets we've already asked the oracle about this session. */
+  const triggered = useRef<Set<string>>(new Set());
 
   const accounts = useMemo(() => loadAccounts(), []);
   const [activeName, setActiveName] = useState<string | null>(
@@ -181,6 +190,33 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
     }, 20_000);
     return () => clearInterval(id);
   }, [refresh]);
+
+  const refreshVerdicts = useCallback(async () => {
+    setVerdicts(await fetchVerdicts());
+  }, []);
+
+  useEffect(() => {
+    void refreshVerdicts();
+  }, [refreshVerdicts]);
+
+  // Fire the oracle the moment a trap's deadline passes, once per market.
+  useEffect(() => {
+    const id = setInterval(() => {
+      const now = Date.now();
+      for (const m of markets) {
+        if (!m.endTime || m.endTime * 1000 > now) continue;
+        if (verdicts[m.id] || triggered.current.has(m.id)) continue;
+
+        triggered.current.add(m.id);
+        void resolveMarket(m.id, { creatorJwt: activeAccount?.jwt })
+          .then(() => refreshVerdicts())
+          .catch(() => {
+            // Leave it marked so we don't hammer a failing market every tick.
+          });
+      }
+    }, 15_000);
+    return () => clearInterval(id);
+  }, [markets, verdicts, activeAccount, refreshVerdicts]);
 
   const switchAccount = useCallback((name: string) => {
     setActiveAccountName(name);
@@ -323,6 +359,8 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
       refresh,
       votes,
       loading,
+      verdicts,
+      refreshVerdicts,
       accounts,
       activeAccount,
       switchAccount,
@@ -330,6 +368,8 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
     [
       votes,
       loading,
+      verdicts,
+      refreshVerdicts,
       markets,
       bets,
       positions,

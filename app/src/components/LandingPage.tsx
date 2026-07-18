@@ -31,10 +31,10 @@ export function LandingPage({ onEnterApp }: { onEnterApp: () => void }) {
   ];
 
   return (
-    <div className="min-h-screen bg-neo-bg font-mono overflow-x-hidden text-neo-dark">
+    <div className="min-h-screen bg-neo-bg font-mono overflow-x-hidden text-neo-dark pt-20 sm:pt-24">
       
       {/* NAVBAR */}
-      <nav className="w-full border-b-4 border-neo-dark bg-white p-4 flex justify-between items-center sticky top-0 z-50">
+      <nav className="fixed inset-x-0 top-0 z-50 w-full border-b-4 border-neo-dark bg-white/95 p-4 backdrop-blur-sm flex justify-between items-center shadow-neo-sm">
         <div className="text-3xl font-black tracking-tighter uppercase flex items-center gap-2">
           <Flame className="text-neo-red" size={32} />
           SpiteBet

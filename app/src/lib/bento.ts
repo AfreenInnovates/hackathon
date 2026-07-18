@@ -101,6 +101,8 @@ type SpiteMeta = {
   category: string;
   verifiedVia: string;
   oracleHandle?: string;
+  /** e.g. 5 commits — what the oracle checks against. */
+  target?: number;
 };
 
 export function encodeTags(meta: SpiteMeta): string[] {
@@ -111,6 +113,7 @@ export function encodeTags(meta: SpiteMeta): string[] {
     `oracle:${meta.verifiedVia}`,
   ];
   if (meta.oracleHandle) tags.push(`acct:${meta.oracleHandle}`);
+  if (meta.target) tags.push(`target:${meta.target}`);
   return tags;
 }
 
@@ -122,6 +125,7 @@ function decodeTags(tags: string[] | null | undefined) {
     category: find('cat:'),
     verifiedVia: find('oracle:'),
     oracleHandle: find('acct:'),
+    target: Number(find('target:')) || 0,
   };
 }
 
@@ -174,6 +178,9 @@ export function duelToMarket(row: DuelRow): Market {
     poolBelieve: believe,
     category: meta.category || '🎯 Anything Else',
     verifiedVia: meta.verifiedVia || 'Group vote',
+    oracleHandle: meta.oracleHandle || undefined,
+    target: meta.target || undefined,
+    endTime: row.endTime ?? undefined,
   };
 }
 
@@ -274,6 +281,7 @@ export type CreateTrapInput = {
   category: string;
   verifiedVia: string;
   oracleHandle?: string;
+  target?: number;
 };
 
 export async function createTrap(input: CreateTrapInput): Promise<string> {
@@ -283,7 +291,7 @@ export async function createTrap(input: CreateTrapInput): Promise<string> {
   const sdk = makeSdk(token);
   // Deadline can't be sooner than the minimum start lead time.
   const start = Date.now() + MIN_START_LEAD_MS;
-  const end = start + Math.max(1, input.hoursFromNow) * 3_600_000;
+  const end = start + Math.max(0.5, input.hoursFromNow) * 3_600_000;
 
   const result = await sdk.user.createDuel(
     {
