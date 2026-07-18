@@ -1,4 +1,4 @@
-### SpiteBet
+## SpiteBet
 SpiteBet is a social accountability app built on Bento testnet. It turns daily goals into prediction-style traps so friends can bet against you or back you using fake internet money, then lets an AI oracle judge the result later.
 
 ### What it does
